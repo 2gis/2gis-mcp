@@ -14,6 +14,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { MapGLClient } from './mapgl-client.js';
+import { VERSION } from './version.js';
 import {
   Coordinate,
   POISearchParams,
@@ -31,8 +32,8 @@ class MapGLMCPServer {
   constructor() {
     this.server = new Server(
       {
-        name: 'mapgl-mcp-server',
-        version: '0.1.0',
+        name: '2gis-mcp',
+        version: VERSION,
       },
       {
         capabilities: {

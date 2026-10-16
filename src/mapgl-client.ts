@@ -15,6 +15,7 @@ import {
   IsochroneApiRequest, IsochroneApiResponse,
   CatalogApiResponse,
 } from './types.js';
+import { VERSION } from './version.js';
 
 const catalogFields = [
   'items.point',
@@ -26,11 +27,21 @@ export class MapGLClient {
   private apiKey: string;
   private routingApiKey: string;
   private baseUrl: string;
+  private static readonly USER_AGENT = `2gis-mcp/${VERSION}`;
 
   constructor(apiKey: string, routingApiKey?: string, baseUrl: string = 'https://api.mapgl.com/v1') {
     this.apiKey = apiKey;
     this.routingApiKey = routingApiKey || apiKey;
     this.baseUrl = baseUrl;
+  }
+
+  private async fetchWithUserAgent(url: string, init?: RequestInit): Promise<Response> {
+    const headers: Record<string, string> = {
+      ...(init?.headers as Record<string, string> | undefined),
+      'User-Agent': MapGLClient.USER_AGENT,
+    };
+    // eslint-disable-next-line no-restricted-syntax
+    return fetch(url, { ...init, headers });
   }
 
   /**
@@ -42,7 +53,7 @@ export class MapGLClient {
    */
   async searchPOI(params: POISearchParams): Promise<POIResult[]> {
     const queryUrl = `https://catalog.api.2gis.com/3.0/items?q=${encodeURIComponent(params.query)}&fields=${catalogFields.join(',')}&point=${params.center?.lng ?? 0},${params.center?.lat ?? 0}&radius=${params.radius}&key=${this.apiKey}`;
-    const result = await fetch(queryUrl);
+    const result = await this.fetchWithUserAgent(queryUrl);
     const data: CatalogApiResponse = await result.json();
 
     if (data.meta.code !== 200) {
@@ -120,7 +131,7 @@ export class MapGLClient {
     }
 
     const url = `https://routing.api.2gis.com/routing/7.0.0/global?key=${this.routingApiKey}`;
-    const response = await fetch(url, {
+    const response = await this.fetchWithUserAgent(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -227,7 +238,7 @@ export class MapGLClient {
    */
   async geocode(params: GeocodeParams): Promise<GeocodeResult[]> {
     const url = `https://catalog.api.2gis.com/3.0/items/geocode?q=${encodeURIComponent(params.query)}&fields=items.point,items.address_name&key=${this.apiKey}`;
-    const result = await fetch(url);
+    const result = await this.fetchWithUserAgent(url);
     const data: CatalogApiResponse = await result.json();
 
     if (!data.result?.items || data.result.items.length === 0) {
@@ -255,7 +266,7 @@ export class MapGLClient {
     if (params.radius !== undefined) {
       url += `&radius=${params.radius}`;
     }
-    const result = await fetch(url);
+    const result = await this.fetchWithUserAgent(url);
     const data: CatalogApiResponse = await result.json();
 
     if (!data.result?.items || data.result.items.length === 0) {
@@ -322,7 +333,7 @@ export class MapGLClient {
       if (poly.fillColor) pn += `~f:${poly.fillColor}`;
       url += pn;
     }
-    const image = await fetch(url).then(r => r.arrayBuffer()).then(buffer => Buffer.from(buffer).toString('base64'));
+    const image = await this.fetchWithUserAgent(url).then(r => r.arrayBuffer()).then(buffer => Buffer.from(buffer).toString('base64'));
     return {
       imageUrl: image,
       bbox: {
@@ -367,7 +378,7 @@ export class MapGLClient {
     }
 
     const url = `https://routing.api.2gis.com/isochrone/2.0.0?key=${this.routingApiKey}`;
-    const response = await fetch(url, {
+    const response = await this.fetchWithUserAgent(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
